@@ -1,14 +1,6 @@
-# ADR — Artisanal Design & Realization
+# Artisanal Design & Realization
 
-Portfolio site for **ADR**, an object design & construction studio. A grey
-catalogue of the objects we design and build. The grid is **3D-first**: every
-object with a GLB renders as a live, spinnable Three.js model, and falls back to
-its still image automatically when WebGL is unavailable or a model is slow to
-load. Custom hammer cursor throughout (with an impact shake), and a physics-based
-draggable "About" pop-up you can throw around the screen.
-
-Built with **SvelteKit + adapter-node** so it runs as a plain Node server behind
-**pm2**.
+Built with **SvelteKit + adapter-node**.
 
 ---
 
@@ -45,12 +37,11 @@ static/
   draco/          DRACO decoder (served locally, no CDN)
 ```
 
-**Everything is data-driven.** To add an object, add one record to
-`src/lib/data/products.js` (image, optional GLB, copy, specs) — the grid,
-the 3D toggle and the detail page pick it up automatically.
+To add an object, add one record to
+`src/lib/data/products.js` (image, optional GLB, copy, specs)
 
 Colours, grid sizes and type scale live as CSS custom properties in
-`src/lib/styles/tokens.css` — retune the whole look from that one file.
+`src/lib/styles/tokens.css`
 
 ---
 
@@ -123,6 +114,4 @@ The hotspot (real click point) is aligned to the hammer head via
 native cursor.
 
 ### 3D models
-GLBs are DRACO-compressed. The decoder is vendored in `static/draco/` so no
-external CDN is needed at runtime. Per-model framing (scale/rotation) is tuned
-via the `view` field on each product record.
+GLBs are DRACO-compressed

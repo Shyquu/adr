@@ -10,13 +10,23 @@
   [X] stays clickable at any time and closes it. Escape also closes.
 -->
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import popupSvg from '$lib/popup.svg?raw';
+	import { shakeElement } from '$lib/actions/impact.js';
 
 	let { open = false, onclose = () => {} } = $props();
 
 	let el = $state(null);
 	let S = $state(460); // square side (px)
+
+	// shatter-on-close state
+	let shattering = $state(false);
+	let shards = $state([]);
+	let shatterStart = 0;
+	const SHARD_G = 0.6; // shard gravity
+	const SHARD_AIR = 0.995;
+	const HOLD_MS = 120; // brief "cracked but still together" beat before falling
+	const rand = (a, b) => a + Math.random() * (b - a);
 
 	// rigid-body state (written straight to the DOM each frame)
 	let cx = 0,
@@ -76,7 +86,7 @@
 	}
 
 	$effect(() => {
-		if (open && el) center();
+		if (open && el && !shattering) center();
 	});
 
 	function grab(e) {
@@ -205,16 +215,182 @@
 		}
 	}
 
+	// --- shatter on close ------------------------------------------------------
+	// Fracture the diamond into a relatively even field of pieces (a jittered
+	// grid tiling the whole SVG), then let them fall off-screen. The current
+	// rotation (theta) is carried through so it never snaps upright.
+
+	const DIAMOND = [
+		[0.5, 0],
+		[1, 0.5],
+		[0.5, 1],
+		[0, 0.5]
+	];
+
+	function polyArea(pts) {
+		let a = 0;
+		for (let i = 0; i < pts.length; i++) {
+			const p = pts[i];
+			const q = pts[(i + 1) % pts.length];
+			a += p[0] * q[1] - q[0] * p[1];
+		}
+		return Math.abs(a) / 2;
+	}
+
+	const inDiamond = (x, y) => Math.abs(x - 0.5) + Math.abs(y - 0.5) <= 0.5 + 1e-6;
+
+	// even fracture: a jittered grid over the whole box, keeping the cells that
+	// overlap the diamond -> roughly uniform pieces across the SVG.
+	function buildFracture() {
+		const cols = 5;
+		const rows = 5;
+		const jx = (0.9 / cols) * 0.5; // max jitter per interior vertex
+		const jy = (0.9 / rows) * 0.5;
+
+		// grid vertices (interior ones jittered)
+		const gv = [];
+		for (let r = 0; r <= rows; r++) {
+			gv[r] = [];
+			for (let c = 0; c <= cols; c++) {
+				let x = c / cols;
+				let y = r / rows;
+				if (c > 0 && c < cols) x += rand(-jx, jx);
+				if (r > 0 && r < rows) y += rand(-jy, jy);
+				gv[r][c] = [x, y];
+			}
+		}
+
+		const cells = [];
+		for (let r = 0; r < rows; r++) {
+			for (let c = 0; c < cols; c++) {
+				const quad = [gv[r][c], gv[r][c + 1], gv[r + 1][c + 1], gv[r + 1][c]];
+				const cxq = (quad[0][0] + quad[1][0] + quad[2][0] + quad[3][0]) / 4;
+				const cyq = (quad[0][1] + quad[1][1] + quad[2][1] + quad[3][1]) / 4;
+				// drop cells that sit fully in the transparent corners
+				if (!quad.some((p) => inDiamond(p[0], p[1])) && !inDiamond(cxq, cyq)) continue;
+				if (polyArea(quad) < 0.001) continue;
+				cells.push({ pts: quad, impact: [0.5, 0.5] });
+			}
+		}
+		return cells;
+	}
+
+	async function shatter() {
+		if (shattering) return;
+		cancelAnimationFrame(raf);
+		dragging = false;
+		physics = false;
+		window.removeEventListener('pointermove', move);
+		window.removeEventListener('pointerup', release);
+
+		const cosT = Math.cos(theta);
+		const sinT = Math.sin(theta);
+		// map a box-local normalised point -> world (carrying the current pose)
+		const toWorld = (nx, ny) => {
+			const lx = (nx - 0.5) * S;
+			const ly = (ny - 0.5) * S;
+			return [cx + (lx * cosT - ly * sinT), cy + (lx * sinT + ly * cosT)];
+		};
+
+		const cells = buildFracture();
+		const [pwx, pwy] = toWorld(cells[0]?.impact[0] ?? 0.5, cells[0]?.impact[1] ?? 0.13);
+
+		const list = [];
+		for (const cell of cells) {
+			const pts = cell.pts;
+			let sx = 0;
+			let sy = 0;
+			for (const p of pts) {
+				sx += p[0];
+				sy += p[1];
+			}
+			const cnx = sx / pts.length;
+			const cny = sy / pts.length;
+			const [wx, wy] = toWorld(cnx, cny);
+
+			// pieces radiate from the impact point; nearer ones scatter faster
+			let dx = wx - pwx;
+			let dy = wy - pwy;
+			let len = Math.hypot(dx, dy);
+			if (len < 1) {
+				dx = rand(-1, 1);
+				dy = rand(-1, 1);
+				len = Math.hypot(dx, dy) || 1;
+			}
+			// even, gentle outward scatter (pieces mostly just fall)
+			const speed = rand(1.2, 2.6);
+
+			list.push({
+				clip: `polygon(${pts.map((p) => `${(p[0] * 100).toFixed(2)}% ${(p[1] * 100).toFixed(2)}%`).join(', ')})`,
+				cnx,
+				cny,
+				px: wx,
+				py: wy,
+				angle: theta,
+				vx: (dx / len) * speed + vx * 0.25 + rand(-0.5, 0.5),
+				vy: (dy / len) * speed * 0.6 + vy * 0.25 - rand(0.4, 1.6),
+				av: rand(-0.14, 0.14),
+				el: null
+			});
+		}
+
+		shards = list;
+		shattering = true; // hides the intact diamond, renders the shards
+		shatterStart = performance.now();
+
+		// screen shake on the hammer's impact (synced with the swing)
+		const shell = document.querySelector('.shell');
+		if (shell) setTimeout(() => shakeElement(shell, 'adr-shake', 400), 150);
+
+		await tick(); // wait for shard elements to mount
+		raf = requestAnimationFrame(shardStep);
+	}
+
+	function shardStep() {
+		// hold the fractured diamond together for a beat, then let it drop
+		if (performance.now() - shatterStart < HOLD_MS) {
+			raf = requestAnimationFrame(shardStep);
+			return;
+		}
+		const H = window.innerHeight;
+		let allGone = true;
+		for (const sh of shards) {
+			sh.vy += SHARD_G;
+			sh.vx *= SHARD_AIR;
+			sh.px += sh.vx;
+			sh.py += sh.vy;
+			sh.angle += sh.av;
+			if (sh.el) {
+				sh.el.style.transform = `translate3d(${Math.round(sh.px - sh.cnx * S)}px, ${Math.round(sh.py - sh.cny * S)}px, 0) rotate(${sh.angle}rad)`;
+			}
+			if (sh.py < H + S) allGone = false;
+		}
+		// finish when every piece has fallen past the bottom (or after a safety timeout)
+		if (allGone || performance.now() - shatterStart > 5000) {
+			finishClose();
+			return;
+		}
+		raf = requestAnimationFrame(shardStep);
+	}
+
+	function finishClose() {
+		cancelAnimationFrame(raf);
+		shattering = false;
+		shards = [];
+		onclose();
+	}
+
 	function onkey(e) {
-		if (e.key === 'Escape') onclose();
+		if (e.key === 'Escape') shatter();
 	}
 	function closeX(e) {
 		e.stopPropagation();
-		onclose();
+		shatter();
 	}
 
 	onMount(() => {
 		const onResize = () => {
+			if (shattering) return;
 			if (physics || dragging) {
 				cx = clamp(cx, r(), window.innerWidth - r());
 				cy = clamp(cy, r(), window.innerHeight - r());
@@ -235,7 +411,7 @@
 
 <svelte:window onkeydown={onkey} />
 
-{#if open}
+{#if open && !shattering}
 	<div
 		class="wrap"
 		class:dragging
@@ -264,6 +440,16 @@
 	</div>
 {/if}
 
+{#if open && shattering}
+	{#each shards as sh (sh)}
+		<div
+			class="shard"
+			bind:this={sh.el}
+			style="width:{S}px;height:{S}px; transform-origin:{sh.cnx * 100}% {sh.cny * 100}%; transform:translate3d({sh.px - sh.cnx * S}px,{sh.py - sh.cny * S}px,0) rotate({sh.angle}rad); clip-path:{sh.clip}; -webkit-clip-path:{sh.clip};"
+		></div>
+	{/each}
+{/if}
+
 <style>
 	.wrap {
 		position: fixed;
@@ -277,6 +463,15 @@
 	}
 	.wrap.dragging {
 		user-select: none;
+	}
+	.shard {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 901;
+		pointer-events: none;
+		background: url('/popup.svg') center / 100% 100% no-repeat;
+		will-change: transform;
 	}
 	.popup {
 		position: absolute;

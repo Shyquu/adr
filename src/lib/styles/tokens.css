@@ -1,0 +1,45 @@
+/* ==========================================================================
+   ADR — Design tokens
+   Single source of truth for colour, type and layout. Everything else
+   references these custom properties so the whole look can be retuned here.
+   ========================================================================== */
+:root {
+	/* ---- Surface / greys (Blender-viewport grey) ---- */
+	--adr-bg: #8d8d8d;
+	--adr-bg-2: #949494;
+	--adr-panel: #8a8a8a;
+	--adr-viewer-bg: #6e6e6e;
+
+	/* ---- Grid ---- */
+	--adr-grid-fine: rgba(255, 255, 255, 0.05);
+	--adr-grid-fine-dark: rgba(0, 0, 0, 0.04);
+	--adr-grid-cell: rgba(20, 20, 20, 0.55); /* the thin cell dividers */
+	--adr-grid-cell-soft: rgba(20, 20, 20, 0.28);
+	--adr-cell-line: rgba(28, 28, 28, 0.42); /* catalogue cell borders (thicker) */
+	--adr-cell-line-w: 2px;
+	--adr-frame: #1c1c1c;
+
+	/* ---- Ink ---- */
+	--adr-ink: #101010;
+	--adr-ink-soft: #2a2a2a;
+	--adr-muted: #6c6c6c;
+	--adr-muted-2: #7a7a7a;
+
+	/* ---- Accents ---- */
+	--adr-orange: #fc7007;
+	--adr-orange-ink: #0a0a0a;
+	--adr-red: #f10901;
+	--adr-yellow: #f4c50e;
+
+	/* ---- Type ---- */
+	--adr-font: 'IBM Plex Sans', Arial, 'Helvetica Neue', Helvetica, sans-serif;
+	--adr-fs-nav: clamp(2rem, 4.4vw, 4.1rem);
+	--adr-fs-card: clamp(0.95rem, 1.15vw, 1.25rem);
+
+	/* ---- Metrics ---- */
+	--adr-header-h: clamp(84px, 9vw, 128px);
+	--adr-gutter: clamp(10px, 1.4vw, 22px);
+	--adr-fine-size: 26px;   /* graph-paper cell */
+	--adr-coarse-size: 130px;/* heavier grid */
+	--adr-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}

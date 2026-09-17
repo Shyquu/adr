@@ -53,16 +53,16 @@ export const products = [
 		slug: 'big-phone',
 		code: '2602',
 		title: 'Big Phone',
-		client: 'Ski Aggu',
+		client: 'Vodafone',
 		category: 'Objects',
 		image: `${IMG}/phone.png`,
 		model: `${MDL}/big_phone.glb`,
 		view: { scale: 1, yaw: 0.35, pitch: 0.05, offsetY: 0 },
 		gallery: [],
-		blurb: 'Oversized handset prop for stage & video.',
+		blurb: 'Oversized handset prop for a commercial.',
 		body: [
 			'A larger-than-life smartphone prop, milled and finished for close-up camera work.',
-			'Built as a hero object for the tour visuals and used across the artist’s social rollout.'
+			'Built as a hero object for a vodafone commercial and used across the vodafones’s social rollout.'
 		],
 		specs: [
 			['90cm h', '44cm w', '8cm d'],
@@ -73,7 +73,7 @@ export const products = [
 		slug: 'incense-holder',
 		code: '2603',
 		title: 'Incense Holder',
-		client: 'ADR Editions',
+		client: 'Anonymous',
 		category: 'Objects',
 		image: `${IMG}/incense_stick_holder.png`,
 		model: `${MDL}/incense_holder.glb`,
@@ -81,8 +81,7 @@ export const products = [
 		gallery: [],
 		blurb: 'Cast sculptural incense holder.',
 		body: [
-			'A sculptural incense holder from the ADR in-house editions line.',
-			'Organic cast body with a machined brass ball finial — one of a small numbered run.'
+			'A Special Request–branded incense holder and storage, built out of wood using my CNC router.',
 		],
 		specs: [
 			['34cm h', '18cm w', '18cm d'],
@@ -133,7 +132,7 @@ export const products = [
 		slug: 'microphone',
 		code: '2606',
 		title: 'Microphone',
-		client: 'Bani',
+		client: 'Soho Bani',
 		category: 'Objects',
 		image: `${IMG}/bani_mic.png`,
 		model: `${MDL}/bani_mic.glb`,
@@ -141,7 +140,7 @@ export const products = [
 		gallery: [],
 		blurb: 'Sculpted hero microphone prop.',
 		body: [
-			'A sculpted hero microphone built for artist Bani’s music video.',
+			'A sculpted hero microphone built for artist Soho Bani’s live performances.',
 			'Machined body with a fabricated mesh head, finished for macro camera work.'
 		],
 		specs: [
